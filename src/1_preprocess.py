@@ -21,6 +21,8 @@ def text_to_0_and_1(df):
 
     # Replace all 'yes' and 'no' values
     df = df.replace({'No': 0, 'Yes': 1})
+
+    print('Turned all text dummies to numeric dummies.')
     
     return df
 
@@ -55,6 +57,8 @@ def categorical_to_0_and_1(df):
     df = create_dummy_variables(df, 'income')
     df.rename(columns={'Prefer not to say': 'income_notsay'}, inplace=True)
 
+    print('Created dummy variables from categorical ones.')
+
     return(df)
 
 def decimal_time(df):
@@ -72,6 +76,8 @@ def decimal_time(df):
     df['wake_minute'] = df['psqi_3'].dt.minute
     df['wake_decimal_time'] = df['wake_hour'] + df['wake_minute'] / 60
     df.drop(columns=['wake_hour', 'wake_minute'], inplace=True)
+
+    print('Turned sleep and wake times numeric.')
 
     return(df)
 
@@ -133,6 +139,10 @@ def select_predictors(df):
 
     subset_df = df[pred_vars]
 
+    subset_df = subset_df.dropna(axis=1)
+
+    print('Selected predictor variables.')
+
     return(subset_df)
 
 def add_outcome(df: pd.DataFrame, subset_df: pd.DataFrame, outcome: str):
@@ -140,6 +150,19 @@ def add_outcome(df: pd.DataFrame, subset_df: pd.DataFrame, outcome: str):
     outcome_variable = df[[outcome]]
     df = pd.concat([subset_df, outcome_variable], axis=1)
     return(df)
+
+def save_to_csv(df: pd.DataFrame, subset_df: pd.DataFrame, outcomes: list):
+    
+    for outcome in outcomes:
+        # Generate the new DataFrame with the outcome
+        result_df = add_outcome(df, subset_df, outcome)
+        
+        # Create the file path
+        save_path = f'data/{outcome}.csv'
+        
+        # Save the DataFrame to a CSV file
+        result_df.to_csv(save_path, index=False)
+        print(f'Saved {outcome} to {save_path}')
 
 def main():
 
@@ -151,10 +174,13 @@ def main():
     data = decimal_time(data)
 
     predictors = select_predictors(data)
-    depression = add_outcome(data, predictors, 'cesd_total')
-
-    save_path = 'data/depression2.csv'
-    depression.to_csv(save_path, index=False)
+    outcome_list = [
+        'cesd_total', 
+        'gad_total',
+        'inq_perceivedburden',
+        'inq_thwartedbelong',
+        'upps_total']
+    save_to_csv(data, predictors, outcome_list)
 
 if __name__ == "__main__":
     main()
