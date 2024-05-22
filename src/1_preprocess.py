@@ -25,10 +25,12 @@ def text_to_0_and_1(df):
     return df
 
 def create_dummy_variables(df, column):
+
     dummy_variables = pd.get_dummies(df[column])
     dummy_variables = dummy_variables.astype(int)
     df = pd.concat([df, dummy_variables], axis=1)
     df.drop(columns=[column], inplace=True)
+
     return df
 
 def categorical_to_0_and_1(df):
@@ -70,6 +72,8 @@ def decimal_time(df):
     df['wake_minute'] = df['psqi_3'].dt.minute
     df['wake_decimal_time'] = df['wake_hour'] + df['wake_minute'] / 60
     df.drop(columns=['wake_hour', 'wake_minute'], inplace=True)
+
+    return(df)
 
 def select_predictors(df):
 
@@ -127,11 +131,30 @@ def select_predictors(df):
         'subs_can_17to20', 'subs_can_20to23', 'subs_can_23to02', 'subs_can_02to05'
         ]
 
-    predictors = df[pred_vars]
+    subset_df = df[pred_vars]
 
-    return(predictors)
+    return(subset_df)
 
-def add_outcome(predictors):
-    outcome_variable = df[['cesd_total']]
-    depression = pd.concat([predictors, outcome_variable], axis=1)
-    return(depression)
+def add_outcome(df: pd.DataFrame, subset_df: pd.DataFrame, outcome: str):
+
+    outcome_variable = df[[outcome]]
+    df = pd.concat([subset_df, outcome_variable], axis=1)
+    return(df)
+
+def main():
+
+    data_path = "data/answers-dataset-0.2.0.csv"
+    data = pd.read_csv(data_path)
+
+    data = text_to_0_and_1(data)
+    data = categorical_to_0_and_1(data)
+    data = decimal_time(data)
+
+    predictors = select_predictors(data)
+    depression = add_outcome(data, predictors, 'cesd_total')
+
+    save_path = 'data/depression2.csv'
+    depression.to_csv(save_path, index=False)
+
+if __name__ == "__main__":
+    main()

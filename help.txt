@@ -4,3 +4,5 @@ git config --global user.email "your_email@example.com"
 pip install pandas
 pip install seaborn
 pip install scipy
+pip install scikit-learn
+pip install xgboost
