@@ -173,7 +173,7 @@ def main():
     data = categorical_to_0_and_1(data)
     data = decimal_time(data)
 
-    predictors = select_predictors(data)
+    predictors = select_predictors(data) 
     outcome_list = [
         'cesd_total', 
         'gad_total',
