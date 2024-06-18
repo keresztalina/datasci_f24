@@ -19,6 +19,11 @@ from xgboost import XGBRegressor
 
 # FUNCTIONS
 def load_csvs_to_dfs(filenames):
+    ''' 
+    Loads several .csv files into a list of dataframes.
+    Args:
+        filenames (list): list of filenames of the .csv files we want to load
+    '''
     dataframes = []
     for name in filenames:
         file_path = f'data/{name}.csv'
@@ -30,25 +35,48 @@ def load_csvs_to_dfs(filenames):
             print(f'File {file_path} not found.')
     return dataframes
 
-def plot_outcome(df: pd.DataFrame):
+def plot_outcome(df):
+    ''' 
+    Plots a histogram of the outcome variable in the dataframe, then saves 
+    the plot. The outcome variable must be the last column of the dataframe, 
+    and must be numeric.
+    Args:
+        df (pd.DataFrame): dataframe containing the predictors (X) and outcome (y)
+    '''
     # Extract the last column
     last_column_name = df.columns[-1]
     
     # Create the plot
     plt.figure(figsize=(10, 6))
-    plt.hist(df[last_column_name], bins=50)
+    plt.hist(
+        df[last_column_name], 
+        bins=50)
     plt.title(f'Histogram of {last_column_name}')
     plt.ylabel(last_column_name)
     plt.grid(True)
 
     plt.savefig(f'plots/hist_{last_column_name}.png')
 
-def plot_correlations(df: pd.DataFrame):
+def plot_correlations(df):
+    ''' 
+    Creates a correlation plot of all the predictors and the outcome variable,
+    then saves the plot.
+    Args:
+        df (pd.DataFrame): dataframe containing the predictors (X) and outcome (y)
+    '''
     last_column_name = df.columns[-1]
-    sns.clustermap(df.corr(), cmap='viridis')
+    sns.clustermap(
+        df.corr(), 
+        cmap='viridis')
     plt.savefig(f'plots/corr_{last_column_name}.png')
 
-def create_splits(df:pd.DataFrame):
+def create_splits(df):
+    ''' 
+    Turns the dataframe into a numpy array, then creates train, test and validation
+    splits.
+    Args:
+        df (pd.DataFrame): dataframe containing the predictors (X) and outcome (y)
+    '''
     X = df.iloc[:,:-1].values
     y = df.iloc[:,-1].values
 
@@ -67,6 +95,11 @@ def create_splits(df:pd.DataFrame):
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 def identify_variable_types(data):
+    ''' 
+    Automatically identifies continous and dummy variables in an array.
+    Args:
+        data (np.array): dataframe containing the predictors (X) and outcome (y)
+    '''
     continuous_vars = []
     dummy_vars = []
 
@@ -82,21 +115,53 @@ def identify_variable_types(data):
     return continuous_vars, dummy_vars
 
 def transform_X(X_train, X_val, X_test):
+    ''' 
+    Prepares the train, validation and test sets to be passed into the model. A 
+    scaler is fit to the train set, and the train, validation and test sets are
+    transformed accordingly. Then principal component analysis is performed on 
+    the train split retaining components explaining 95% of the variance. The vali-
+    dation and test sets are transformed accordingly.
+    Args:
+        X_train (np.array): training split of predictors (X)
+        X_val (np.array): validation split of predictors (X)
+        X_test (np.array): test split of predictors (X)
+    '''
 
     continuous_cols, dummy_cols = identify_variable_types(X_train)
     preprocessor = ColumnTransformer(
         transformers=[
-            ('num', StandardScaler(), continuous_cols),
-            ('dummy', 'passthrough', dummy_cols)  # Leave dummy variables unchanged or use StandardScaler() if needed
+            ('num', StandardScaler(), continuous_cols), # scale
+            ('dummy', 'passthrough', dummy_cols) # makes no sense to scale
         ]
     )
-    X_train = preprocessor.fit_transform(X_train)
-    X_val = preprocessor.transform(X_val)
-    X_test = preprocessor.transform(X_test)
+    X_train = preprocessor.fit_transform(X_train) # fit and transform
+    X_val = preprocessor.transform(X_val) # only transform
+    X_test = preprocessor.transform(X_test) # only transform
+
+    pca = PCA(n_components=0.95)
+    X_train = pca.fit_transform(X_train)
+    X_val = pca.transform(X_val)
+    X_test = pca.transform(X_test)
 
     return X_train, X_val, X_test
 
 def loop_through_dfs(list_of_dfs):
+    ''' 
+    First defines two functions necessary for running the models.
+    Then loops through every dataframe in a list of dataframes and:
+    - plots the outcome variable, 
+    - plots correlations between the variables, 
+    - creates train, validation and test splits, 
+    - scales X and performs PCA,
+    - runs a null model which predicts the mean of y,
+    - runs a basic linear model,
+    - runs several Ridge- and Lasso-regularized linear models,
+    - runs Random Forest models,
+    - runs XGBoost models,
+    - compares the models based on RMSE.
+    Args:
+        list_of_dfs (list): list of dataframes on which to perform the above actions
+    '''
 
     def run_on_splits(func):
         def _run_loop(*args, **kwargs):
@@ -142,28 +207,27 @@ def loop_through_dfs(list_of_dfs):
         
         # transform X
         X_train, X_val, X_test = transform_X(X_train, X_val, X_test)
-
-        # perform PCA
-        pca = PCA(n_components=0.95)
-        X_train = pca.fit_transform(X_train)
-        X_val = pca.transform(X_val)
-        X_test = pca.transform(X_test)
         print("...Preparations completed!")
         
         model_performances = []
 
         # run null model
         print("Running null model...")
-        evaluate(model=None, model_name='dummy', constant_value=y_train.mean())
+        evaluate(
+            model=None, 
+            model_name='dummy', 
+            constant_value=y_train.mean())
         print("...Ran null model!")
 
         # run plain linear regression
         print("Running linear regression...")
         reg = LinearRegression().fit(X_train, y_train)
-        evaluate(model=reg, model_name='linear')
+        evaluate(
+            model=reg, 
+            model_name='linear')
         print("...Ran linear regression!")
 
-        # run ridge and lasso versions
+        # run ridge- and lasso-regularized versions
         print("Running Ridge and Lasso regressions...")
         models = {} 
         models['linear-0.0'] = reg
@@ -175,7 +239,9 @@ def loop_through_dfs(list_of_dfs):
                     id = 'ridge'
                 reg = est(alpha=alpha).fit(X_train, y_train)
                 models[f'{id}-{alpha}'] = reg
-                evaluate(model=reg, model_name=f'{id}-alpha-{alpha}')
+                evaluate(
+                    model=reg, 
+                    model_name=f'{id}-alpha-{alpha}')
         print("...Ran Lasso and Ridge!")
 
         # run random forest regression
@@ -185,16 +251,19 @@ def loop_through_dfs(list_of_dfs):
             'n_estimators': [10, 20, 100, 200, 500],
             'max_depth' : [2, 3, 5, 10],
             'min_samples_split': [2, 5, 10],
-            'max_features': [0.3, 0.6, 0.9], # can you guess what this is, without looking at the documentation?
+            'max_features': [0.3, 0.6, 0.9], 
             'ccp_alpha': [0.01, 0.1, 1.0]
         }
-        cv_rfr = RandomizedSearchCV(estimator=rfreg, # I am choosing RandomizedSearchCV for speed, but you can also go for GridSearchCV :)
-                                    param_distributions=param_grid,
-                                    scoring='neg_mean_squared_error', # this is "neg" because CV wants a metric to maximize
-                                    n_iter=100, # this should more likely be above 100, and in general the higher the better
-                                    cv=5)
+        cv_rfr = RandomizedSearchCV(
+            estimator=rfreg, 
+            param_distributions=param_grid,
+            scoring='neg_mean_squared_error', 
+            n_iter=100, 
+            cv=5)
         cv_rfr.fit(X_train, y_train)
-        evaluate(model=cv_rfr.best_estimator_, model_name=f'random-forest')
+        evaluate(
+            model=cv_rfr.best_estimator_, 
+            model_name=f'random-forest')
         print("...Ran Random Forest!")
 
         # run xgboost regression
@@ -208,24 +277,31 @@ def loop_through_dfs(list_of_dfs):
             'colsample_bytree': [0.3, 0.6, 0.9],
             'learning_rate': [2e-5, 2e-4, 2e-3, 2e-2, 2e-1]
         }
-        cv_xgb = RandomizedSearchCV(estimator=xgbreg, 
-                                    param_distributions=param_grid,
-                                    scoring='neg_mean_squared_error',
-                                    n_iter=100, # this should be at least 100
-                                    cv=5)
+        cv_xgb = RandomizedSearchCV(
+            estimator=xgbreg, 
+            param_distributions=param_grid,
+            scoring='neg_mean_squared_error',
+            n_iter=100, 
+            cv=5)
         cv_xgb.fit(X_train, y_train)
-        evaluate(model=cv_xgb.best_estimator_, model_name=f'xgboost')
+        evaluate(
+            model=cv_xgb.best_estimator_, 
+            model_name=f'xgboost')
         print("...Ran XGBoost!")
 
         # check model performances
         print("Comparing models...")
         perf_df = pd.DataFrame(model_performances)
         plt.figure(figsize=(10, 8))
-        sns.scatterplot(data=perf_df.sort_values(by='rmse', ascending=False), 
-                        y='model', 
-                        x='rmse', 
-                        marker='s', 
-                        hue='split', palette=['darkorange', 'grey', 'darkred'])
+        sns.scatterplot(
+            data=perf_df.sort_values(
+                by='rmse', 
+                ascending=False), 
+            y='model', 
+            x='rmse', 
+            marker='s', 
+            hue='split', 
+            palette=['darkorange', 'grey', 'darkred'])
         plt.savefig(f'plots/model_perfs_{idx}.png')
         print("...Model performances saved!")
 
