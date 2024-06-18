@@ -9,6 +9,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.linear_model import LinearRegression, Lasso, Ridge
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures, MinMaxScaler
 from sklearn.compose import ColumnTransformer
+from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split, GridSearchCV, RandomizedSearchCV
 from sklearn.tree import DecisionTreeRegressor
 from sklearn import tree as tr
@@ -185,26 +186,6 @@ def loop_through_dfs(list_of_dfs):
                                     cv=5)
         cv_rfr.fit(X_train, y_train)
         evaluate(model=cv_rfr.best_estimator_, model_name=f'random-forest')
-        importances = cv_rfr.best_estimator_.feature_importances_
-        feature_names = df.columns.tolist()[:-1]
-        # Get the indices of the top 10 features based on their importances
-        top_10_indices = np.argsort(importances)[-10:][::-1]
-
-        # Select the top 10 feature names and their importances
-        top_10_feature_names = [feature_names[i] for i in top_10_indices]
-        top_10_importances = importances[top_10_indices]
-
-        # Plot the top 10 feature importances using seaborn barplot
-        plt.figure(figsize=(10, 8))
-        sns.barplot(
-            x=top_10_feature_names, 
-            y=top_10_importances, 
-            color=sns.color_palette()[0])
-        plt.xlabel('Features')
-        plt.ylabel('Importance')
-        plt.title('Top 10 Feature Importances')
-        plt.xticks(rotation=90)  # Rotate x-axis labels for better readability
-        plt.savefig(f'plots/features_rfreg_{idx}.png')
         print("Ran Random Forest")
 
         # run xgboost regression
@@ -224,25 +205,6 @@ def loop_through_dfs(list_of_dfs):
                                     cv=5)
         cv_xgb.fit(X_train, y_train)
         evaluate(model=cv_xgb.best_estimator_, model_name=f'xgboost')
-        importances = cv_xgb.best_estimator_.feature_importances_
-        # Get the indices of the top 10 features based on their importances
-        top_10_indices = np.argsort(importances)[-10:][::-1]
-
-        # Select the top 10 feature names and their importances
-        top_10_feature_names = [feature_names[i] for i in top_10_indices]
-        top_10_importances = importances[top_10_indices]
-
-        # Plot the top 10 feature importances using seaborn barplot
-        plt.figure(figsize=(10, 8))
-        sns.barplot(
-            x=top_10_feature_names, 
-            y=top_10_importances, 
-            color=sns.color_palette()[0])
-        plt.xlabel('Features')
-        plt.ylabel('Importance')
-        plt.title('Top 10 Feature Importances')
-        plt.xticks(rotation=90)  # Rotate x-axis labels for better readability
-        plt.savefig(f'plots/features_xgb_{idx}.png')
         print("Ran XGBoost")
 
         # check model performances
