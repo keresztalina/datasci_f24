@@ -41,12 +41,12 @@ def plot_outcome(df: pd.DataFrame):
     plt.ylabel(last_column_name)
     plt.grid(True)
 
-    plt.savefig(f'plots/hist_{last_column_name}.png')
+    plt.savefig(f'plots/hist_{last_column_name}.png', bbox_inches='tight')
 
 def plot_correlations(df: pd.DataFrame):
     last_column_name = df.columns[-1]
     sns.clustermap(df.corr(), cmap='viridis')
-    plt.savefig(f'plots/corr_{last_column_name}.png')
+    plt.savefig(f'plots/corr_{last_column_name}.png', bbox_inches='tight')
 
 def create_splits(df:pd.DataFrame):
     X = df.iloc[:,:-1].values
@@ -220,13 +220,13 @@ def loop_through_dfs(list_of_dfs):
         # check model performances
         print("Comparing models...")
         perf_df = pd.DataFrame(model_performances)
-        plt.figure(figsize=(10, 8))
+        plt.figure(figsize=(10, 6))
         sns.scatterplot(data=perf_df.sort_values(by='rmse', ascending=False), 
                         y='model', 
                         x='rmse', 
                         marker='s', 
                         hue='split', palette=['darkorange', 'grey', 'darkred'])
-        plt.savefig(f'plots/model_perfs_{idx}.png')
+        plt.savefig(f'plots/model_perfs_{idx}.png', bbox_inches='tight')
         print("...Model performances saved!")
 
 def main():
