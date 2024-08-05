@@ -3,23 +3,25 @@ import pandas as pd
 
 ##### FUNCTIONS #####
 def text_to_0_and_1(df):
-    # Replace values in the 'sex' column
+    # Creates dummy variables with values 0 or 1 from string variables.
+
+    # replace values in the 'sex' column
     df['sex'] = df['sex'].replace({'Male': 0, 'Female': 1})
     
-    # Replace values in the 'ethnicity' column and create 'hispanic' column
+    # replace values in the 'ethnicity' column and create 'hispanic' column
     df['hispanic'] = df['ethnicity'].replace({'Non-Hispanic': 0, 'Hispanic': 1})
     df.drop(columns=['ethnicity'], inplace=True)
     
-    # Replace values in the 'handedness' column and rename it to 'left_handed'
+    # replace values in the 'handedness' column and rename it to 'left_handed'
     df['handedness'] = df['handedness'].replace({'Right': 0, 'Left': 1, 'Both': 1})
     df.rename(columns={'handedness': 'left_handed'}, inplace=True)
 
-    # Replace values in the 'education' column and rename it to 'college_educated'
+    # replace values in the 'education' column and rename it to 'college_educated'
     df = df.dropna(subset=['education']) # only 1 person...
     df['education'] = df['education'].replace({'High school or less': 0, 'College or more': 1})
     df.rename(columns={'education': 'college_educated'}, inplace=True)
 
-    # Replace all 'yes' and 'no' values
+    # replace all 'yes' and 'no' values
     df = df.replace({'No': 0, 'Yes': 1})
 
     print('Turned all text dummies to numeric dummies.')
@@ -27,6 +29,8 @@ def text_to_0_and_1(df):
     return df
 
 def create_dummy_variables(df, column):
+    # Creates dummy variables from string categorical ones and removes
+    # the original column.
 
     dummy_variables = pd.get_dummies(df[column])
     dummy_variables = dummy_variables.astype(int)
@@ -36,6 +40,8 @@ def create_dummy_variables(df, column):
     return df
 
 def categorical_to_0_and_1(df):
+    # Identifies the categorical variables and applies the dummy creation
+    # function to them.
 
     # transform to create meaningful column names
     df['subs_caff_1'] = df['subs_caff_1'].apply(lambda x: "Caffeine " + x)
@@ -62,6 +68,7 @@ def categorical_to_0_and_1(df):
     return(df)
 
 def decimal_time(df):
+    # Turns time to numerical format for processing by the model.
 
     df['psqi_1'] = df['psqi_1'].str.replace(r'\.000$', '', regex=True)
     df['psqi_1'] = pd.to_datetime(df['psqi_1'], format='%H:%M:%S')
@@ -82,6 +89,7 @@ def decimal_time(df):
     return(df)
 
 def select_predictors(df):
+    # Selects predictors and returns a subsetted df containing only those.
 
     # identify predictor variables
     pred_vars = [
@@ -146,33 +154,35 @@ def select_predictors(df):
     return(subset_df)
 
 def add_outcome(df: pd.DataFrame, subset_df: pd.DataFrame, outcome: str):
+    # Concatenates a selected outcome variable with the predictor variables,
+    # ensuring it is the last column.
 
     outcome_variable = df[[outcome]]
     df = pd.concat([subset_df, outcome_variable], axis=1)
     return(df)
 
 def save_to_csv(df: pd.DataFrame, subset_df: pd.DataFrame, outcomes: list):
+    # Saves the dataframe to a csv file.
     
     for outcome in outcomes:
-        # Generate the new DataFrame with the outcome
-        result_df = add_outcome(df, subset_df, outcome)
         
-        # Create the file path
+        outcome_df = add_outcome(df, subset_df, outcome)
         save_path = f'data/{outcome}.csv'
-        
-        # Save the DataFrame to a CSV file
-        result_df.to_csv(save_path, index=False)
+        outcome_df.to_csv(save_path, index=False)
         print(f'Saved {outcome} to {save_path}')
 
 def main():
 
+    # define path and load data
     data_path = "data/answers-dataset-0.2.0.csv"
     data = pd.read_csv(data_path)
 
+    # preprocess to convert everything to numeric representations
     data = text_to_0_and_1(data)
     data = categorical_to_0_and_1(data)
     data = decimal_time(data)
 
+    # select predictors and save dataframes
     predictors = select_predictors(data) 
     outcome_list = [
         'cesd_total', 

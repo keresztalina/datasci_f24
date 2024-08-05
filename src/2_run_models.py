@@ -19,6 +19,8 @@ from xgboost import XGBRegressor
 
 # FUNCTIONS
 def load_csvs_to_dfs(filenames):
+    # Loads files into a list of dataframes.
+
     dataframes = []
     for name in filenames:
         file_path = f'data/{name}.csv'
@@ -31,10 +33,12 @@ def load_csvs_to_dfs(filenames):
     return dataframes
 
 def plot_outcome(df: pd.DataFrame):
-    # Extract the last column
+    # Plots a histogram of the outcome variable.
+
+    # extract the last column
     last_column_name = df.columns[-1]
     
-    # Create the plot
+    # create the plot
     plt.figure(figsize=(10, 6))
     plt.hist(df[last_column_name], bins=50)
     plt.title(f'Histogram of {last_column_name}')
@@ -44,11 +48,15 @@ def plot_outcome(df: pd.DataFrame):
     plt.savefig(f'plots/hist_{last_column_name}.png', bbox_inches='tight')
 
 def plot_correlations(df: pd.DataFrame):
+    # Creates a plot of the correlations between all the predictors. 
+
     last_column_name = df.columns[-1]
     sns.clustermap(df.corr(), cmap='viridis')
     plt.savefig(f'plots/corr_{last_column_name}.png', bbox_inches='tight')
 
 def create_splits(df:pd.DataFrame):
+    # Creates train, validation and test splits of size 70%-15%-15%.
+
     X = df.iloc[:,:-1].values
     y = df.iloc[:,-1].values
 
@@ -67,6 +75,8 @@ def create_splits(df:pd.DataFrame):
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 def identify_variable_types(data):
+    # Identifies variable types automatically for later standardization purposes. 
+
     continuous_vars = []
     dummy_vars = []
 
@@ -82,23 +92,26 @@ def identify_variable_types(data):
     return continuous_vars, dummy_vars
 
 def transform_X(X_train, X_val, X_test):
+    # Standardizes continuous variables and passes through dummy ones.
 
     continuous_cols, dummy_cols = identify_variable_types(X_train)
     preprocessor = ColumnTransformer(
         transformers=[
             ('num', StandardScaler(), continuous_cols),
-            ('dummy', 'passthrough', dummy_cols)  # Leave dummy variables unchanged or use StandardScaler() if needed
+            ('dummy', 'passthrough', dummy_cols) 
         ]
     )
-    X_train = preprocessor.fit_transform(X_train)
-    X_val = preprocessor.transform(X_val)
-    X_test = preprocessor.transform(X_test)
+    X_train = preprocessor.fit_transform(X_train) # fit to train set and transform
+    X_val = preprocessor.transform(X_val) # transform only
+    X_test = preprocessor.transform(X_test) # transform only
 
     return X_train, X_val, X_test
 
 def loop_through_dfs(list_of_dfs):
+    # Loops through the dataframes and runs all the models
 
     def run_on_splits(func):
+        # Function from class material. 
         def _run_loop(*args, **kwargs):
             for x,y,nsplit in zip([X_train, X_val, X_test],
                                 [y_train, y_val, y_test],
@@ -108,6 +121,7 @@ def loop_through_dfs(list_of_dfs):
 
     @run_on_splits
     def evaluate(model, X, y, nsplit, model_name, constant_value=None):
+        # Function from class material. 
         ''' Evaluates the performance of a model 
         Args:
             model (sklearn.Estimator): fitted sklearn estimator
@@ -185,13 +199,13 @@ def loop_through_dfs(list_of_dfs):
             'n_estimators': [10, 20, 100, 200, 500],
             'max_depth' : [2, 3, 5, 10],
             'min_samples_split': [2, 5, 10],
-            'max_features': [0.3, 0.6, 0.9], # can you guess what this is, without looking at the documentation?
+            'max_features': [0.3, 0.6, 0.9], 
             'ccp_alpha': [0.01, 0.1, 1.0]
         }
-        cv_rfr = RandomizedSearchCV(estimator=rfreg, # I am choosing RandomizedSearchCV for speed, but you can also go for GridSearchCV :)
+        cv_rfr = RandomizedSearchCV(estimator=rfreg, 
                                     param_distributions=param_grid,
-                                    scoring='neg_mean_squared_error', # this is "neg" because CV wants a metric to maximize
-                                    n_iter=100, # this should more likely be above 100, and in general the higher the better
+                                    scoring='neg_mean_squared_error', 
+                                    n_iter=100, 
                                     cv=5)
         cv_rfr.fit(X_train, y_train)
         evaluate(model=cv_rfr.best_estimator_, model_name=f'random-forest')
@@ -211,7 +225,7 @@ def loop_through_dfs(list_of_dfs):
         cv_xgb = RandomizedSearchCV(estimator=xgbreg, 
                                     param_distributions=param_grid,
                                     scoring='neg_mean_squared_error',
-                                    n_iter=100, # this should be at least 100
+                                    n_iter=100, 
                                     cv=5)
         cv_xgb.fit(X_train, y_train)
         evaluate(model=cv_xgb.best_estimator_, model_name=f'xgboost')
